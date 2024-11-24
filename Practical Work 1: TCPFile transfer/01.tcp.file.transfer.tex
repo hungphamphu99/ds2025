@@ -1,3 +1,4 @@
+
 \documentclass[a4paper,12pt]{article}
 \usepackage{graphicx}
 \usepackage{tikz}
@@ -21,6 +22,7 @@ This practical work aims to implement a 1-to-1 TCP file transfer system using so
 \begin{itemize}
     \item One server to handle file transfers
     \item One client to request and receive the file
+    \item Communication over TCP/IP
 \end{itemize}
 
 The following sections explain the protocol design, system organization, implementation, and team responsibilities.
@@ -77,11 +79,24 @@ The following diagram illustrates the protocol:
 \end{figure}
 
 \section*{System Organization}
-The system is organized using a client-server architecture. The server is responsible for managing connections and transferring files, while the client handles connection requests and receiving files.
+The system is organized using a client-server architecture. The following diagram shows the structure of the system:
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.9\textwidth]{Screenshot 2024-11-24 at 18.10.13.png}
+    \begin{tikzpicture}[node distance=2cm]
+
+    % Nodes
+    \node (client) [process] {Client};
+    \node (network) [process, right of=client, xshift=4cm] {Network};
+    \node (server) [process, right of=network, xshift=4cm] {Server};
+
+    % Arrows
+    \draw [arrow] (client.east) -- node[anchor=south] {Connect Request} (network.west);
+    \draw [arrow] (network.east) -- node[anchor=south] {Forward to Server} (server.west);
+    \draw [arrow] (server.west) -- node[anchor=north] {Send Data} (network.east);
+    \draw [arrow] (network.west) -- node[anchor=north] {Deliver to Client} (client.east);
+
+    \end{tikzpicture}
     \caption{System Organization: Client-Server Architecture}
     \label{fig:system}
 \end{figure}
