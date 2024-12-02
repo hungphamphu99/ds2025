@@ -1,4 +1,3 @@
-
 \documentclass[a4paper,12pt]{article}
 \usepackage{graphicx}
 \usepackage{tikz}
@@ -102,39 +101,135 @@ The system is organized using a client-server architecture. The following diagra
 \end{figure}
 
 \section*{Implementation}
-The file transfer is implemented using Python socket programming. Below are snippets for the server and client implementations.
+The file transfer is implemented using C socket programming. Below are snippets for the server and client implementations.
 
 \subsection*{Server Code}
 \begin{verbatim}
-# Python example
-import socket
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind(('0.0.0.0', 8080))
-server_socket.listen(1)
+#define PORT 8080
 
-conn, addr = server_socket.accept()
-print(f"Connection from {addr}")
-with open('file.txt', 'rb') as file:
-    conn.sendfile(file)
-conn.close()
-server_socket.close()
+int main() {
+    int server_socket, client_socket;
+    struct sockaddr_in server_addr, client_addr;
+    socklen_t client_len;
+    char buffer[1024];
+    FILE *file_to_send;
+
+    // Create socket
+    server_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_socket < 0) {
+        perror("Error opening socket");
+        exit(1);
+    }
+
+    // Prepare the server address
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(PORT);
+
+    // Bind the socket
+    if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Binding failed");
+        exit(1);
+    }
+
+    // Listen for incoming connections
+    listen(server_socket, 1);
+    printf("Server listening on port %d...\n", PORT);
+
+    // Accept connection from client
+    client_len = sizeof(client_addr);
+    client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_len);
+    if (client_socket < 0) {
+        perror("Accept failed");
+        exit(1);
+    }
+
+    // Send file to client
+    file_to_send = fopen("file.txt", "rb");
+    if (file_to_send == NULL) {
+        perror("File not found");
+        exit(1);
+    }
+
+    while (fread(buffer, sizeof(char), sizeof(buffer), file_to_send) > 0) {
+        send(client_socket, buffer, sizeof(buffer), 0);
+    }
+
+    printf("File sent successfully.\n");
+
+    // Close connections
+    fclose(file_to_send);
+    close(client_socket);
+    close(server_socket);
+
+    return 0;
+}
 \end{verbatim}
 
 \subsection*{Client Code}
 \begin{verbatim}
-# Python example
-import socket
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_socket.connect(('server_ip', 8080))
+#define PORT 8080
 
-with open('received_file.txt', 'wb') as file:
-    data = client_socket.recv(1024)
-    while data:
-        file.write(data)
-        data = client_socket.recv(1024)
-client_socket.close()
+int main() {
+    int client_socket;
+    struct sockaddr_in server_addr;
+    char buffer[1024];
+    FILE *file_to_receive;
+
+    // Create socket
+    client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (client_socket < 0) {
+        perror("Error opening socket");
+        exit(1);
+    }
+
+    // Prepare the server address
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    // Connect to server
+    if (connect(client_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Connection failed");
+        exit(1);
+    }
+
+    // Receive file from server
+    file_to_receive = fopen("received_file.txt", "wb");
+    if (file_to_receive == NULL) {
+        perror("Unable to open file for writing");
+        exit(1);
+    }
+
+    int bytes_received;
+    while ((bytes_received = recv(client_socket, buffer, sizeof(buffer), 0)) > 0) {
+        fwrite(buffer, sizeof(char), bytes_received, file_to_receive);
+    }
+
+    printf("File received successfully.\n");
+
+    // Close connections
+    fclose(file_to_receive);
+    close(client_socket);
+
+    return 0;
+}
 \end{verbatim}
 
 \section*{Roles and Contributions}
@@ -145,6 +240,6 @@ client_socket.close()
 \end{itemize}
 
 \section*{Conclusion}
-The project successfully demonstrates a reliable 1-to-1 TCP file transfer system using Python sockets. The implemented protocol ensures robust error handling and orderly connection management.
+The project successfully demonstrates a reliable 1-to-1 TCP file transfer system using C sockets. The implemented protocol ensures robust error handling and orderly connection management.
 
 \end{document}
